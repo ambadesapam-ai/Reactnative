@@ -1,0 +1,55 @@
+// mobile/screens/ProfileScreen.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet } from 'react-native';
+import axios from 'axios';
+
+export default function ProfileScreen({ route }) {
+  const [profile, setProfile] = useState(null);
+  const { profileId } = route.params;
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await axios.get(`/api/profiles/${profileId}`);
+        setProfile(response.data);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    
+    fetchProfile();
+  }, [profileId]);
+  
+  if (!profile) return <Text>Loading...</Text>;
+  
+  return (
+    <View style={styles.container}>
+      <Image 
+        source={{ uri: profile.photos[0] || DEFAULT_IMAGE }} 
+        style={styles.profileImage}
+      />
+      
+      <Text style={styles.name}>{profile.name}, {calculateAge(profile.dob)}</Text>
+      
+      <View style={styles.details}>
+        <Text>{profile.profession}</Text>
+        <Text>{profile.education}</Text>
+        <Text>{profile.religion} | {profile.caste}</Text>
+        <Text>{profile.bio}</Text>
+      </View>
+      
+      <View style={styles.actionButtons}>
+        <Button title="Like" onPress={() => handleLike()} />
+        <Button title="Message" onPress={() => handleMessage()} />
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 20 },
+  profileImage: { width: '100%', height: 300, borderRadius: 10 },
+  name: { fontSize: 24, fontWeight: 'bold', marginVertical: 10 },
+  details: { marginVertical: 15 },
+  actionButtons: { flexDirection: 'row', justifyContent: 'space-around' }
+});
