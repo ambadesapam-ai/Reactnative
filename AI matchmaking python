@@ -1,0 +1,75 @@
+# ai/recommendation.py
+import pandas as pd
+from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import joblib
+
+class Matchmaker:
+    def __init__(self):
+        self.model = None
+        self.preprocessor = None
+        
+    def train(self, profiles_df):
+        """Train the recommendation model"""
+        # Define feature columns
+        numeric_features = ['age', 'income', 'height']
+        categorical_features = ['religion', 'caste', 'education', 'profession']
+        
+        # Create preprocessing pipeline
+        self.preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', StandardScaler(), numeric_features),
+                ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
+            ])
+        
+        # Prepare features
+        features = self.preprocessor.fit_transform(profiles_df)
+        
+        # Train KNN model
+        self.model = NearestNeighbors(
+            n_neighbors=10, 
+            metric='cosine',
+            algorithm='brute'
+        ).fit(features)
+        
+    def recommend(self, user_profile, all_profiles, n=5):
+        """Get top n matches for a user"""
+        # Prepare input
+        input_df = pd.DataFrame([user_profile])
+        processed_input = self.preprocessor.transform(input_df)
+        
+        # Find nearest neighbors
+        distances, indices = self.model.kneighbors(processed_input, n_neighbors=n)
+        
+        # Return matched profiles
+        return [all_profiles.iloc[i].to_dict() for i in indices[0]]
+    
+    def save_model(self, path):
+        """Save trained model to file"""
+        joblib.dump({
+            'model': self.model,
+            'preprocessor': self.preprocessor
+        }, path)
+    
+    @classmethod
+    def load_model(cls, path):
+        """Load trained model from file"""
+        data = joblib.load(path)
+        matchmaker = cls()
+        matchmaker.model = data['model']
+        matchmaker.preprocessor = data['preprocessor']
+        return matchmaker
+
+# Example usage
+if __name__ == "__main__":
+    # Load sample data
+    data = pd.read_csv('profiles.csv')
+    
+    # Train model
+    matcher = Matchmaker()
+    matcher.train(data)
+    
+    # Save for later use
+    matcher.save_model('matchmaker_model.joblib')
